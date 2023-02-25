@@ -2,6 +2,7 @@ package org.demo.springcloud.departmentservice.service.impl;
 
 import org.demo.springcloud.departmentservice.dto.DepartmentDto;
 import org.demo.springcloud.departmentservice.entity.Department;
+import org.demo.springcloud.departmentservice.mapper.DepartmentMapper;
 import org.demo.springcloud.departmentservice.repository.DepartmentRepository;
 import org.demo.springcloud.departmentservice.service.DepartmentService;
 import org.springframework.stereotype.Service;
@@ -17,15 +18,11 @@ public class DepartmentServiceImpl implements DepartmentService {
     @Override
     public DepartmentDto savDepartment(DepartmentDto departmentDto) {
 
-        Department department = new Department(departmentDto.getId(),
-                departmentDto.getDepartmentName(), departmentDto.getDepartmentDescription(),
-                departmentDto.getDepartmentCode());
+        Department department = DepartmentMapper.mapToDepartment(departmentDto);
 
         Department savedDepartment = departmentRepository.save(department);
 
-        DepartmentDto newDepartmentDto = DepartmentDto.builder().id(savedDepartment.getId())
-                .departmentName(savedDepartment.getDepartmentDescription())
-                .departmentCode(savedDepartment.getDepartmentCode()).build();
+        DepartmentDto newDepartmentDto = DepartmentMapper.mapToDepartmentDto(savedDepartment);
 
         return newDepartmentDto;
     }
@@ -35,9 +32,7 @@ public class DepartmentServiceImpl implements DepartmentService {
 
         Department department = departmentRepository.findByDepartmentCode(departmentCode);
 
-        DepartmentDto departmentDto = DepartmentDto.builder().id(department.getId())
-                .departmentName(department.getDepartmentName()).departmentCode(department.getDepartmentCode())
-                .departmentDescription(department.getDepartmentDescription()).build();
+        DepartmentDto departmentDto = DepartmentMapper.mapToDepartmentDto(department);
         return departmentDto;
     }
 

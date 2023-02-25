@@ -4,68 +4,91 @@ import org.demo.springcloud.employeeservice.dto.ApiResponseDto;
 import org.demo.springcloud.employeeservice.dto.DepartmentDto;
 import org.demo.springcloud.employeeservice.dto.EmployeeDto;
 import org.demo.springcloud.employeeservice.entity.Employee;
+import org.demo.springcloud.employeeservice.mapper.EmployeeMapper;
 import org.demo.springcloud.employeeservice.repository.EmployeeRepository;
 import org.demo.springcloud.employeeservice.service.EmployeeService;
-import org.demo.springcloud.employeeservice.service.FeignApiClient;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
+import org.springframework.web.reactive.function.client.WebClient;
+
+import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
+import io.github.resilience4j.retry.annotation.Retry;
 import lombok.AllArgsConstructor;
 
 @Service
 @AllArgsConstructor
 public class EmployeeServiceImpl implements EmployeeService {
 
-    private EmployeeRepository employeeRepository;
+        private static final Logger LOGGER = LoggerFactory.getLogger(EmployeeServiceImpl.class);
+        private EmployeeRepository employeeRepository;
 
-    // private RestTemplate restTemplate;
+        // private RestTemplate restTemplate;
 
-    // private WebClient webClient;
+        private WebClient webClient;
 
-    private FeignApiClient feignApiClient;
+        // private FeignApiClient feignApiClient;
 
-    @Override
-    public EmployeeDto saveEmployee(EmployeeDto employeeDto) {
+        @Override
+        public EmployeeDto saveEmployee(EmployeeDto employeeDto) {
 
-        Employee employeeInput = new Employee(employeeDto.getId(), employeeDto.getFirstName(),
-                employeeDto.getLastName(), employeeDto.getEmail(), employeeDto.getDepartmentCode());
+                Employee employeeInput = EmployeeMapper.mapToEmployee(employeeDto);
 
-        Employee savedEmployee = employeeRepository.save(employeeInput);
+                Employee savedEmployee = employeeRepository.save(employeeInput);
 
-        EmployeeDto employeeDtoOutput = EmployeeDto.builder().id(savedEmployee.getId())
-                .firstName(savedEmployee.getFirstName()).lastName(savedEmployee.getLastName())
-                .email(savedEmployee.getEmail()).departmentCode(savedEmployee.getDepartmentCode()).build();
+                EmployeeDto employeeDtoOutput = EmployeeMapper.mapToEmployeeDto(savedEmployee);
 
-        return employeeDtoOutput;
-    }
+                return employeeDtoOutput;
+        }
 
-    @Override
-    public ApiResponseDto getEmployeeById(Long employeeId) {
+        @Override
+       // @CircuitBreaker(name = "${spring.application.name}",
+         //               fallbackMethod = "getDefaultDepartment")
+        @Retry(name = "${spring.application.name}",
+                      fallbackMethod = "getDefaultDepartment")
+        public ApiResponseDto getEmployeeById(Long employeeId) {
 
-        Employee employee = employeeRepository.findById(employeeId).get();
-        // ResponseEntity<DepartmentDto> responseEntity =
-        // restTemplate.getForEntity("http://localhost:8080/api/department/" +
-        // employee.getDepartmentCode(),
-        // DepartmentDto.class);
+                LOGGER.info("Inside get employee by id method");
+                Employee employee = employeeRepository.findById(employeeId).get();
+                // ResponseEntity<DepartmentDto> responseEntity =
+                // restTemplate.getForEntity("http://localhost:8080/api/department/" +
+                // employee.getDepartmentCode(),
+                // DepartmentDto.class);
 
-        // DepartmentDto departmentDto = responseEntity.getBody();
+                // DepartmentDto departmentDto = responseEntity.getBody();
 
-   
-        // using spring webflux client in sync mode
-        // DepartmentDto departmentDto = webClient.get()
-        // .uri("http://localhost:8080/api/department/" + employee.getDepartmentCode())
-        // .retrieve()
-        // .bodyToMono(DepartmentDto.class)
-        // .block();
+                // using spring webflux client in sync mode
+                DepartmentDto departmentDto = webClient.get()
+                                .uri("http://localhost:9092/api/departments/"
+                                                + employee.getDepartmentCode())
+                                .retrieve().bodyToMono(DepartmentDto.class).block();
 
-        DepartmentDto departmentDto = feignApiClient.getDepartmentByDepartmentCode(employee.getDepartmentCode());
+                // DepartmentDto departmentDto =
+                // feignApiClient.getDepartmentByDepartmentCode(employee.getDepartmentCode());
 
-        EmployeeDto employeeRetrieved = EmployeeDto.builder().id(employee.getId())
-                .firstName(employee.getFirstName()).lastName(employee.getLastName())
-                .email(employee.getEmail()).departmentCode(employee.getDepartmentCode()).build();
+                EmployeeDto employeeRetrieved = EmployeeMapper.mapToEmployeeDto(employee);
 
-        ApiResponseDto responseDto = ApiResponseDto.builder().employee(employeeRetrieved).department(departmentDto)
-                .build();
-        return responseDto;
+                ApiResponseDto responseDto = ApiResponseDto.builder().employee(employeeRetrieved)
+                                .department(departmentDto).build();
+                return responseDto;
 
-    }
+        }
+
+        public ApiResponseDto getDefaultDepartment(Long employeeId, Exception exception) {
+
+                LOGGER.info("Inside getDefaultDepartment fallback method");
+                Employee employee = employeeRepository.findById(employeeId).get();
+
+                DepartmentDto departmentDto = DepartmentDto.builder().id(1l)
+                                .departmentName("R&D department").departmentCode("RD001")
+                                .departmentDescription("Research and Development Department")
+                                .build();
+
+                EmployeeDto employeeRetrieved = EmployeeMapper.mapToEmployeeDto(employee);
+
+                ApiResponseDto responseDto = ApiResponseDto.builder().employee(employeeRetrieved)
+                                .department(departmentDto).build();
+                return responseDto;
+        }
 
 }
