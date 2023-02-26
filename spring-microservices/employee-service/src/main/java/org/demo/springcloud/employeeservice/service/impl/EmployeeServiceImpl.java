@@ -3,6 +3,7 @@ package org.demo.springcloud.employeeservice.service.impl;
 import org.demo.springcloud.employeeservice.dto.ApiResponseDto;
 import org.demo.springcloud.employeeservice.dto.DepartmentDto;
 import org.demo.springcloud.employeeservice.dto.EmployeeDto;
+import org.demo.springcloud.employeeservice.dto.OrganizationDto;
 import org.demo.springcloud.employeeservice.entity.Employee;
 import org.demo.springcloud.employeeservice.mapper.EmployeeMapper;
 import org.demo.springcloud.employeeservice.repository.EmployeeRepository;
@@ -59,17 +60,22 @@ public class EmployeeServiceImpl implements EmployeeService {
 
                 // using spring webflux client in sync mode
                 DepartmentDto departmentDto = webClient.get()
-                                .uri("http://localhost:9092/api/departments/"
+                                .uri("http://localhost:8081/api/departments/"
                                                 + employee.getDepartmentCode())
                                 .retrieve().bodyToMono(DepartmentDto.class).block();
 
                 // DepartmentDto departmentDto =
                 // feignApiClient.getDepartmentByDepartmentCode(employee.getDepartmentCode());
+                OrganizationDto organizationDto = webClient.get()
+                .uri("http://localhost:9092/api/organizations/" + employee.getOrganizationCode())
+                .retrieve()
+                .bodyToMono(OrganizationDto.class)
+                .block();
 
                 EmployeeDto employeeRetrieved = EmployeeMapper.mapToEmployeeDto(employee);
 
                 ApiResponseDto responseDto = ApiResponseDto.builder().employee(employeeRetrieved)
-                                .department(departmentDto).build();
+                                .department(departmentDto).org(organizationDto).build();
                 return responseDto;
 
         }

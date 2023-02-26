@@ -9,7 +9,8 @@ public class EmployeeMapper {
 
         EmployeeDto employeeDto = EmployeeDto.builder().id(employee.getId())
                 .firstName(employee.getFirstName()).lastName(employee.getLastName())
-                .email(employee.getEmail()).departmentCode(employee.getDepartmentCode()).build();
+                .email(employee.getEmail()).departmentCode(employee.getDepartmentCode())
+                .organizationCode(employee.getOrganizationCode()).build();
 
         return employeeDto;
 
@@ -18,7 +19,9 @@ public class EmployeeMapper {
     public static Employee mapToEmployee(EmployeeDto employeeDto) {
 
         Employee employee = new Employee(employeeDto.getId(), employeeDto.getFirstName(),
-                employeeDto.getLastName(), employeeDto.getEmail(), employeeDto.getDepartmentCode());
+                employeeDto.getLastName(), employeeDto.getEmail(), employeeDto.getDepartmentCode(),
+                employeeDto.getOrganizationCode());
+
 
         return employee;
 
